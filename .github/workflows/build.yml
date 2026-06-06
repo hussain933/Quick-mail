@@ -3,12 +3,12 @@ name: Build APK
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
     - uses: actions/checkout@v4
 
@@ -20,27 +20,30 @@ jobs:
 
     - name: Setup Android SDK & NDK
       uses: android-actions/setup-android@v3
-      with:
-        api-level: 34
-        build-tools: 34.0.0
-        ndk-version: 25.2.9519653
+
+    - name: Install NDK
+      run: echo "y" | sdkmanager "ndk;25.2.9519653"
 
     - name: Setup Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
+      uses: dtolnay/rust-toolchain@stable
 
     - name: Install cargo-ndk
       run: cargo install cargo-ndk
 
     - name: Add Android Rust targets
-      run: rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+      run: |
+        rustup target add aarch64-linux-android
+        rustup target add armv7-linux-androideabi
+        rustup target add x86_64-linux-android
 
     - name: Build Rust engine
-      run: cd rust-engine && ./build_android.sh
+      run: |
+        cd rust-engine
+        chmod +x build_android.sh
+        bash build_android.sh
 
-    - name: Generate Gradle wrapper
-      run: gradle wrapper --gradle-version 8.5
+    - name: Make gradlew executable
+      run: chmod +x gradlew
 
     - name: Build APK
       run: ./gradlew assembleDebug
@@ -48,5 +51,6 @@ jobs:
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: app-debug
+        name: QuickMail-debug
         path: app/build/outputs/apk/debug/app-debug.apk
+        retention-days: 30
